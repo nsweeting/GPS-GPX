@@ -123,15 +123,11 @@ class GPX_ROUTE():
 		'''Used to keep track of current position in relation to current route - run as thread.'''
 		#Run while routing is enabled
 		while self.route_mode == True:
-			
 			#Calculates distance between current position, and destination point
 			waypoint_info = haversine(self.current_status['lat'],self.current_status['lon'],self.waypoint_info['lat'],self.waypoint_info['lon'])
 			self.waypoint_calc = {'distance': waypoint_info[0], 'bearing': waypoint_info[1]}
 			#Calculates total route distance
 			self.total_distance = self.waypoint_calc['distance'] + self.route_distance
-			#Close to the destination - get the next point
-			if self.waypoint_calc['distance'] < 0.02:
-				self.get_point(0)
 			time.sleep(self.sleep_time['distance'])
 
 	def arrival(self):
