@@ -98,9 +98,7 @@ class GPX_ROUTE():
 		return self.route_points[self.route_position]
 
 	def calc_distance(self):
-		'''Calculates the distance between the next route position, and all points after.'''
-		#Removes the current route point from calculation
-		x = self.route_position + 1
+		'''Calculates the distance between the current waypoint, and all points after.'''
 		self.route_distance = 0
 		#The total number of remaining route points (-1 because of 0 list start)
 		length = len(self.route_points) - 1
@@ -125,6 +123,7 @@ class GPX_ROUTE():
 		'''Used to keep track of current position in relation to current route - run as thread.'''
 		#Run while routing is enabled
 		while self.route_mode == True:
+			
 			#Calculates distance between current position, and destination point
 			waypoint_info = haversine(self.current_status['lat'],self.current_status['lon'],self.waypoint_info['lat'],self.waypoint_info['lon'])
 			self.waypoint_calc = {'distance': waypoint_info[0], 'bearing': waypoint_info[1]}
