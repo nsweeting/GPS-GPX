@@ -5,7 +5,7 @@ GPS-GPX is a python script that enables the reading of GPX route files, as well 
 
 In order for this script to fully work, you must have an incoming GPS dataset - Latitude, Longitude, Speed being the crucial information. In typical setups this could be an NMEA0183 GPS connected to your computer. Th easiest way to work with this data is with another script I have created called [NMEA0183](https://github.com/nsweeting/NMEA0183). Instructions on its use are included. Once you have Lat/Long/Speed variables available, using GPS-GPX will be easy.
 
-This project is still incomplete. The GPX tracking feature is not yet complete.
+More features including an alarm system for waypoint distance and XTE to come.
 
 Requirements
 ------------
@@ -95,5 +95,28 @@ print 'XTE Direction: ',route.waypoint_xte['dir']
 route.time_sleep['distance'] = 5
 route.time_sleep['arrival'] = 5
 route.time_sleep['xte'] = 5
+
+ ```
+ 
+ Here is an example of using the GPX track features:
+ 
+  
+ ```python
+ import GPX
+
+#Provide information on the GPX source directory
+track = GPX_TRACK('C:/Users/Nick/Documents/GitHub/GPS-GPX/')
+
+#Creates a new track GPX file in the directory set above. The name of the file is ALWAYS the current date and time. The name of the track is 'Example Track'.
+track.start('Example Track')
+
+#We can create a new point in the track file using any incoming GPS datasource. Latitude, Longitude, Elevation, Date/Time in UTC
+track.point(43.916848835, -68.023909754, 10, '2011-12-21T13:25:08Z')
+
+#An estimate of the current file size in bytes is kept here. Allows for better memory mangement ie. Create a new file once a max file size has been hit.
+print track.size
+
+#We always have to close the file
+track.close()
 
  ```
