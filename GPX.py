@@ -78,11 +78,12 @@ class GPX_ROUTE():
 		#Hour and minutes to current waypoint
 		self.waypoint_eta        = {'hour': '', 'min': ''}
 		#Current crosstrack error for waypoint
-		self.waypoint_xte        = [0,'']
+		self.waypoint_xte        = {'distance': '', 'dir': ''}
 		#The total distance of current route
 		self.total_distance      = 0
 		#The estimated date of arrival for total route
 		self.total_eta           = None
+		self.sleep_time          = {'distance': 1, 'arrival': 1, 'xte': 1}
 		self.xte_alarm           = 10
 		self.xte_angle           = [0,[0,0],0,[0,0]]
 
@@ -169,8 +170,6 @@ class GPX_ROUTE():
 
 	def position(self):
 		'''Used to keep track of current position in relation to current route - run as thread.'''
-		#Gets the next route position
-		self.get_point(0)
 		#Run while routing is enabled
 		while self.route_mode == True:
 			#Calculates distance between current position, and destination point
@@ -181,7 +180,7 @@ class GPX_ROUTE():
 			#Close to the destination - get the next point
 			if self.waypoint_calc['distance'] < 0.02:
 				self.get_point(0)
-			time.sleep(1)
+			time.sleep(self.sleep_time['distance'])
 
 	def arrival(self):
 		'''Calculates the estimated arrival time based on current speed - run as thread.'''
@@ -202,24 +201,18 @@ class GPX_ROUTE():
 				time_point = self.waypoint_calc['distance'] / speed
 				time_point_min, time_point_hour = math.modf(time_point)
 				time_point_min = round(time_point_min*60)
-				#If time is too large to display properly
-				if time_point_hour > 1000:
-					self.waypoint_eta['hour'] = '1000'
-				else:
-					#Add a 0 if minutes are less then 10
-					if time_point_min < 10:
-						time_point_min = '0' + str(time_point_min)
-					#Remove decimal points
-					self.waypoint_eta['hour'] = int(str(time_point_hour).replace('.0',''))
-					self.waypoint_eta['min'] = str(time_point_min).replace('.0','')
-				time.sleep(4)
+				#Add a 0 if minutes are less then 10
+				if time_point_min < 10:
+					time_point_min = '0' + str(time_point_min)
+				#Remove decimal points
+				self.waypoint_eta['hour'] = int(str(time_point_hour).replace('.0',''))
+				self.waypoint_eta['min'] = str(time_point_min).replace('.0','')
 			#Do not estimate times if speed is 0
 			else:
 				self.total_eta = '           --'
 				self.waypoint_eta['hour'] = '--'
 				self.waypoint_eta['min'] = '--'
-			print self.waypoint_eta
-			print self.total_eta
+			time.sleep(self.sleep_time['arrival'])
 
 	def crosstrack(self):
 		'''Calculates the crosstrack error for the current destination - run as thread.'''
@@ -230,14 +223,14 @@ class GPX_ROUTE():
 				#Gets haversine info of last route point
 				hav_start = haversine(self.route_points[self.route_position - 1][0], self.route_points[self.route_position - 1][1], self.current_status['lat'], self.current_status['lon'])
 				#Crosstrack calculation
-				self.waypoint_xte[0] = math.asin(math.sin(hav_start[0]/3443.92)*math.sin(hav_start[1]-self.route_points[self.route_position - 1][4]))*3443.92
+				self.waypoint_xte['distance'] = math.asin(math.sin(hav_start[0]/3443.92)*math.sin(hav_start[1]-self.route_points[self.route_position - 1][4]))*3443.92
 				#Negative is left of course - making positive again
-				if self.waypoint_xte[0] < 0:
-					self.waypoint_xte[0] = self.waypoint_xte[0]*(-1)
-					self.waypoint_xte[1] = 'L'
+				if self.waypoint_xte['distance'] < 0:
+					self.waypoint_xte['distance'] = self.waypoint_xte['distance']*(-1)
+					self.waypoint_xte['dir'] = 'L'
 				#Right of course
-				elif self.waypoint_xte[0] > 0:
-					self.waypoint_xte[1] ='R'
+				elif self.waypoint_xte['distance'] > 0:
+					self.waypoint_xte['dir'] ='R'
 				#Creates a crosstrack angle
 				#self.angle()
 				#Checks for XTE alarm status
@@ -248,11 +241,9 @@ class GPX_ROUTE():
 			#No current standard bearing
 			else:
 				#self.alarm.xte = False
-				self.waypoint_xte[0] = '    --'
-				self.waypoint_xte[1] =''
-			time.sleep(1)
-			print self.waypoint_xte[0]
-			print self.waypoint_xte[1]
+				self.waypoint_xte['distance'] = ''
+				self.waypoint_xte['dir'] =''
+			time.sleep(self.sleep_time['xte'])
 
 	def angle(self):
 		'''Calculates the crosstrack angle numbers for the interface.'''
@@ -310,4 +301,77 @@ def haversine(lat_1,lon_1,lat_2,lon_2):
 		pass
 
 
+route = GPX_ROUTE('C:/Users/Nick/Documents/GitHub/GPS-GPX/Example.gpx')
+
+#Reads the entire GPX file, and provides a list of each waypoints Name, Lat/Long, as well as distance and bearing to the next waypoint.
+#Also calculates total route distance, from first to last point.
+route.read_gpx()
+
+#Holds all route waypoint info
+print route.route_points
+#Holds current route distance
+print 'Route Distance: ',route.route_distance
+
+#Right now, your 'current' waypoint is not set at all. In order select the first waypoint, we must move forward in the list.
+#0 = forward, 1= backwards
+route.get_point(0)
+
+#'Current' waypoint info is held in the following variable
+print 'Name: ',route.waypoint_info['name']
+print 'Lat: ',route.waypoint_info['lat']
+print 'Long: ',route.waypoint_info['lon']
+print 'Distance: ',route.waypoint_info['distance']
+print 'Bearing: ',route.waypoint_info['bearing']
+
+#Holds your current position in the route list, 0 is the start
+print 'Route Position: ',route.route_position
+
+#Since our 'current' waypoint is the first in the route, we will not be able to calculate a few things, such as crosstrack error, since there is no route line.
+#So lets move our 'current' waypoint forward to the second in the route list
+route.get_point(0)
+
+#Reprinting the next waypoints info
+print 'Name: ',route.waypoint_info['name']
+print 'Lat: ',route.waypoint_info['lat']
+print 'Long: ',route.waypoint_info['lon']
+print 'Distance: ',route.waypoint_info['distance']
+print 'Bearing: ',route.waypoint_info['bearing']
+
+#Now lets turn on routing calculations. We need an active NMEA0183 GPS datasource for this to work.
+#We need to provide our current Lat/Long and Speed. For now, we're just going to use random numbers.
+#The Lat/Long MUST be in decimal format. Speed must be in knots (the typical GPS speed output).
+#These variables must be constantly updated for proper routing to function.
+route.current_status['lat'] = 43.916848835
+route.current_status['lat'] = -68.023909754
+route.current_status['speed'] = 6.54
+
+#Turns routing on and off.
+route.switch()
+
+#From this, 3 threads are run. One keeps track of distance, another of time, and the last for crosstrack error.
+#We are now provided with the distance and bearing from our current position to the 'current' waypoint 
+print 'Waypoint Distance: ',route.waypoint_calc['distance']
+print 'Waypoint Bearing: ',route.waypoint_calc['bearing']
+
+#We are also provided the total distance, from our current position, to the 'current' waypoint, as well as all points after. 
+print 'Total Distance: ',route.total_distance
+
+#Provide time for hours to be calculated
+time.sleep(.1)
+
+#We are also provided with the amount of time required to arrive from our current poisiton, to our 'current' waypoint, while going at our current speed.
+print 'Waypoint Hours: ',route.waypoint_eta['hour']
+print 'Waypoint Mins: ',route.waypoint_eta['min']
+
+#We are also provided with the ETA from our current position, to the last waypoint in the route, while going at our current speed.
+print 'Route ETA: ',route.total_eta
+
+#We are also provided with the crosstrack error from our current position, to our 'current' waypoints route line. We have distance, as well as direction - left 'L' or right 'R' of the line.
+print 'XTE Distance: ',route.waypoint_xte['distance']
+print 'XTE Direction: ',route.waypoint_xte['dir']
+
+#In order to control processing power, we can change the amount of time between recalculations. Default is 1 second. Below is 5 seconds.
+route.time_sleep['distance'] = 5
+route.time_sleep['arrival'] = 5
+route.time_sleep['xte'] = 5
 
